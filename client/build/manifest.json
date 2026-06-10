@@ -1,0 +1,9 @@
+{
+  "short_name": "SafeRoute AI",
+  "name": "SafeRoute AI – Women Safety Smart Commute Assistant",
+  "icons": [],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#000000",
+  "background_color": "#ffffff"
+}

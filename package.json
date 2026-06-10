@@ -1,0 +1,22 @@
+{
+  "name": "saferoute-ai",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SafeRoute AI – Women Safety Smart Commute Assistant for India (Hackathon Winning Project)",
+  "scripts": {
+    "install:all": "npm install && cd client && npm install && cd ../server && npm install",
+    "start:client": "cd client && npm start",
+    "start:server": "cd server && npm start",
+    "dev:client": "cd client && npm start",
+    "dev:server": "cd server && npm run dev",
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "build": "cd client && npm run build",
+    "start": "npm run start:server"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "keywords": ["women-safety", "ai", "hackathon", "india", "react", "nodejs", "mongodb"],
+  "author": "Your Team Name",
+  "license": "MIT"
+}
