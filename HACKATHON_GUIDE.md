@@ -414,7 +414,7 @@ Location: /ai-services/voice_stress/samples/
 | Frontend won't load | Check port 3000, `npm start` in client folder |
 | Cannot login | Ensure MongoDB is running with seed data |
 | API errors | Check backend logs, verify MONGODB_URI |
-| Maps not showing | Verify GOOGLE_MAPS_API_KEY in .env |
+| Maps not showing | Verify ORS_API_KEY and GEOAPIFY_API_KEY are set in .env |
 | Real-time updates lag | Check Socket.io connection in browser dev tools |
 | Audio upload fails | Ensure /uploads folder exists and is writable |
 

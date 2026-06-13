@@ -1,6 +1,5 @@
 import { motion } from 'framer-motion';
 import { SOSButton, FakeCall, DistressVoiceButton, CheckInButton } from '../components/safety';
-import { VoiceAssistant } from '../components/voice';
 import GlassCard from '../components/common/GlassCard';
 
 const Emergency = () => {
@@ -47,16 +46,6 @@ const Emergency = () => {
           );
         })}
       </div>
-
-      {/* Voice Assistant Section */}
-      <motion.div
-        initial={{ opacity: 0, y: 30 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4 }}
-        className="mt-12"
-      >
-        <VoiceAssistant />
-      </motion.div>
     </div>
   );
 };

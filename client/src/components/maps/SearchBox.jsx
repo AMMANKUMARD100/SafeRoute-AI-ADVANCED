@@ -1,54 +1,48 @@
-import { useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+import mapService from '../../services/mapService';
 
 const SearchBox = ({ onPlaceSelected, placeholder = 'Enter location...', className = '' }) => {
   const inputRef = useRef(null);
   const autocompleteRef = useRef(null);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
-    let pollId = null;
-    let mounted = true;
-
-    const initAutocomplete = () => {
-      if (!mounted || !inputRef.current) return false;
-      if (!window.google || !window.google.maps || !window.google.maps.places) return false;
-
-      autocompleteRef.current = new window.google.maps.places.Autocomplete(
-        inputRef.current,
-        { componentRestrictions: { country: 'in' } } // Restrict to India
-      );
-
-      autocompleteRef.current.addListener('place_changed', () => {
-        const place = autocompleteRef.current.getPlace();
-        if (place && place.geometry) {
-          onPlaceSelected({
-            address: place.formatted_address,
-            lat: place.geometry.location.lat(),
-            lng: place.geometry.location.lng(),
-            placeId: place.place_id,
-          });
+    // Replace Google Autocomplete with Geoapify geocoding on blur/enter
+    const onKey = async (e) => {
+      if (e.key === 'Enter') {
+        const text = inputRef.current.value;
+        try {
+          const loc = await mapService.geocodePlace(text);
+          onPlaceSelected({ address: text, lat: loc.lat, lng: loc.lng, raw: loc.raw });
+          setLoadError(false);
+        } catch (err) {
+          console.error('[SearchBox] Geocoding failed', err);
+          setLoadError(true);
         }
-      });
-
-      return true;
+      }
     };
 
-    // Try to initialize immediately, otherwise poll briefly until the library is available
-    if (!initAutocomplete()) {
-      pollId = setInterval(() => {
-        if (initAutocomplete() && pollId) {
-          clearInterval(pollId);
-          pollId = null;
-        }
-      }, 250);
-    }
+    const onBlur = async () => {
+      const text = inputRef.current.value;
+      if (!text) return;
+      try {
+        const loc = await mapService.geocodePlace(text);
+        onPlaceSelected({ address: text, lat: loc.lat, lng: loc.lng, raw: loc.raw });
+        setLoadError(false);
+      } catch (err) {
+        console.error('[SearchBox] Geocoding failed', err);
+        setLoadError(true);
+      }
+    };
+
+    const el = inputRef.current;
+    el && el.addEventListener('keydown', onKey);
+    el && el.addEventListener('blur', onBlur);
 
     return () => {
-      mounted = false;
-      if (pollId) clearInterval(pollId);
-      if (autocompleteRef.current && typeof autocompleteRef.current.unbindAll === 'function') {
-        try { autocompleteRef.current.unbindAll(); } catch (e) { /* ignore */ }
-      }
+      el && el.removeEventListener('keydown', onKey);
+      el && el.removeEventListener('blur', onBlur);
     };
   }, [onPlaceSelected]);
 
@@ -61,6 +55,11 @@ const SearchBox = ({ onPlaceSelected, placeholder = 'Enter location...', classNa
         placeholder={placeholder}
         className="w-full pl-10 pr-4 py-3 rounded-xl backdrop-blur-lg bg-white/10 border border-white/20 text-white placeholder-gray-400 focus:outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-500/30 transition-all"
       />
+      {loadError && (
+        <p className="mt-2 text-xs text-red-300">
+          Geocoding failed. Check your Geoapify API key and billing settings.
+        </p>
+      )}
     </div>
   );
 };

@@ -1,4 +1,4 @@
-import { Polyline, Marker } from '@react-google-maps/api';
+import { Polyline, Marker, Popup } from 'react-leaflet';
 import { useState } from 'react';
 
 // Color map for different route types
@@ -11,10 +11,11 @@ const routeColors = {
 const RouteRenderer = ({ routes, selectedRouteIndex, onRouteClick }) => {
   const [hoveredIndex, setHoveredIndex] = useState(null);
 
-  // Decode polyline if needed (Google returns encoded string; here we assume array of lat/lng objects)
+  // Decode polyline if needed (Google encoded string). If path already array, return it.
   const decodePolyline = (encoded) => {
-    if (!encoded || typeof encoded !== 'string') return [];
-    // Simple decoder for Google encoded polyline
+    if (!encoded) return [];
+    if (Array.isArray(encoded)) return encoded;
+    if (typeof encoded !== 'string') return [];
     const points = [];
     let index = 0, lat = 0, lng = 0;
     while (index < encoded.length) {
@@ -43,9 +44,8 @@ const RouteRenderer = ({ routes, selectedRouteIndex, onRouteClick }) => {
     <>
       {routes.map((route, idx) => {
         // Determine path: either array of coords or encoded polyline
-        const path = Array.isArray(route.path)
-          ? route.path
-          : decodePolyline(route.polyline);
+        const pathPoints = Array.isArray(route.polyline) ? route.polyline : decodePolyline(route.polyline);
+        const path = pathPoints.map(p => (p.lat !== undefined ? [p.lat, p.lng] : [p[1], p[0]]));
 
         if (!path.length) return null;
 
@@ -56,27 +56,31 @@ const RouteRenderer = ({ routes, selectedRouteIndex, onRouteClick }) => {
         return (
           <Polyline
             key={idx}
-            path={path}
-            options={{
-              strokeColor: color,
-              strokeOpacity: isSelected || isHovered ? 1 : 0.7,
-              strokeWeight: isSelected ? 8 : isHovered ? 6 : 5,
-              zIndex: isSelected ? 10 : 1,
-              clickable: true,
+            positions={path}
+            pathOptions={{
+              color,
+              opacity: isSelected || isHovered ? 1 : 0.7,
+              weight: isSelected ? 8 : isHovered ? 6 : 5,
             }}
-            onClick={() => onRouteClick && onRouteClick(idx)}
-            onMouseOver={() => setHoveredIndex(idx)}
-            onMouseOut={() => setHoveredIndex(null)}
+            eventHandlers={{
+              click: () => onRouteClick && onRouteClick(idx),
+              mouseover: () => setHoveredIndex(idx),
+              mouseout: () => setHoveredIndex(null),
+            }}
           />
         );
       })}
 
       {/* Start/End markers (optional) */}
       {routes.length > 0 && routes[0].startLocation && (
-        <Marker position={routes[0].startLocation} icon={{ url: '/marker-start.svg', scaledSize: new window.google.maps.Size(30, 30) }} />
+        <Marker position={[routes[0].startLocation.lat, routes[0].startLocation.lng]}>
+          <Popup>Start</Popup>
+        </Marker>
       )}
       {routes.length > 0 && routes[0].endLocation && (
-        <Marker position={routes[0].endLocation} icon={{ url: '/marker-end.svg', scaledSize: new window.google.maps.Size(30, 30) }} />
+        <Marker position={[routes[0].endLocation.lat, routes[0].endLocation.lng]}>
+          <Popup>End</Popup>
+        </Marker>
       )}
     </>
   );

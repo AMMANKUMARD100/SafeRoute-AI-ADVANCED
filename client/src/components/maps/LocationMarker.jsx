@@ -1,24 +1,16 @@
-import { Marker } from '@react-google-maps/api';
+import { Marker, Tooltip } from 'react-leaflet';
 
 const LocationMarker = ({ position, heading = 0, pulsate = false }) => {
   if (!position) return null;
 
-  // Custom SVG marker icon (pink glowing dot)
-  const icon = {
-    path: window.google.maps.SymbolPath.CIRCLE,
-    fillColor: '#ec4899',
-    fillOpacity: 0.9,
-    strokeColor: '#fff',
-    strokeWeight: 2,
-    scale: pulsate ? 12 : 10,
-  };
+  const latlng = Array.isArray(position) ? position : [position.lat, position.lng];
 
   return (
-    <Marker
-      position={position}
-      icon={icon}
-      animation={pulsate ? window.google.maps.Animation.BOUNCE : null}
-    />
+    <Marker position={latlng}>
+      <Tooltip permanent direction="top">
+        You are here
+      </Tooltip>
+    </Marker>
   );
 };
 

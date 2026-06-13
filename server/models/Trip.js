@@ -18,7 +18,8 @@ const tripSchema = new mongoose.Schema(
       lng: { type: Number, required: true },
     },
     routePolyline: {
-      type: String, // Google encoded polyline
+      type: Array,
+      default: [],
     },
     safetyScore: {
       type: Number,

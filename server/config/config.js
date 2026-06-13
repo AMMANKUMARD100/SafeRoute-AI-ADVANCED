@@ -12,8 +12,11 @@ const config = {
   jwtSecret: process.env.JWT_SECRET,
   jwtExpire: process.env.JWT_EXPIRE || '30d',
 
-  // Google Maps
-  googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY,
+  // OpenRouteService
+  orsApiKey: process.env.ORS_API_KEY || process.env.OPENROUTESERVICE_API_KEY,
+
+  // Groq API (for AI Assistant)
+  groqApiKey: process.env.GROQ_API_KEY,
 
   // Twilio (SMS)
   twilioSid: process.env.TWILIO_SID,
@@ -28,18 +31,28 @@ const config = {
   aiRouteScorerUrl: process.env.AI_ROUTE_SCORER_URL || 'http://localhost:5001',
   aiVoiceDistressUrl: process.env.AI_VOICE_DISTRESS_URL || 'http://localhost:5002',
 
+  // External APIs
+  geoapifyApiKey: process.env.GEOAPIFY_API_KEY || process.env.REACT_APP_GEOAPIFY_API_KEY,
+  openWeatherApiKey: process.env.OPENWEATHER_API_KEY || process.env.REACT_APP_OPENWEATHER_API_KEY,
+  orsApiKey: process.env.ORS_API_KEY || process.env.OPENROUTESERVICE_API_KEY,
+
   // Client URL (for CORS)
   clientUrl: process.env.CLIENT_URL || 'http://localhost:3000',
 };
 
 // Validate critical env vars in production
 if (config.nodeEnv === 'production') {
-  const required = ['mongodbUri', 'jwtSecret', 'googleMapsApiKey'];
+  const required = ['mongodbUri', 'jwtSecret', 'groqApiKey', 'orsApiKey'];
   for (const key of required) {
     if (!config[key]) {
       console.error(`❌ Missing required environment variable: ${key.toUpperCase()}`);
       process.exit(1);
     }
+  }
+} else {
+  // Development: warn about missing GROQ_API_KEY
+  if (!config.groqApiKey) {
+    console.warn('⚠️  GROQ_API_KEY not configured – AI Assistant will not work. Add it to .env');
   }
 }
 

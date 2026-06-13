@@ -30,7 +30,7 @@ const RouteInfoCard = ({ route, onSelect, onStart }) => {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.2 }}
-      className="absolute bottom-4 left-1/2 -translate-x-1/2 w-[90%] max-w-sm backdrop-blur-lg bg-gray-900/80 border border-white/20 rounded-2xl p-4 shadow-2xl z-10"
+      className="w-full backdrop-blur-lg bg-gray-900/80 border border-white/20 rounded-2xl p-4 shadow-2xl"
     >
       <div className="flex items-center justify-between mb-3">
         <span className={`text-xs font-semibold px-3 py-1 rounded-full text-white ${typeColors[type]}`}>
@@ -61,20 +61,7 @@ const RouteInfoCard = ({ route, onSelect, onStart }) => {
         </div>
       </div>
 
-      <div className="flex gap-2">
-        <button
-          onClick={onSelect}
-          className="flex-1 py-2 rounded-xl bg-white/10 border border-white/10 text-white text-sm font-medium hover:bg-pink-600/30 transition"
-        >
-          View Details
-        </button>
-        <button
-          onClick={onStart}
-          className="flex-1 py-2 rounded-xl bg-gradient-to-r from-pink-600 to-purple-600 text-white text-sm font-medium hover:brightness-110 transition"
-        >
-          Start Navigation
-        </button>
-      </div>
+      {/* Buttons removed: view details and start navigation handled elsewhere */}
     </motion.div>
   );
 };

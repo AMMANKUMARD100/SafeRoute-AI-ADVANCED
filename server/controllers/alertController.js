@@ -91,14 +91,22 @@ exports.triggerSOS = async (req, res) => {
         const messageText = `🚨 EMERGENCY from ${user.name}! Location: ${locationLink}. Message: ${message}`;
         console.log('[SOS] Sending alert to:', [...recipients].join(', '));
 
-        for (const phone of recipients) {
+        const sendPromises = [...recipients].map(async (phone) => {
           try {
             await sendSMS(phone, messageText);
+            return { phone, success: true };
           } catch (err) {
             console.error(`SMS failed for ${phone}:`, err.message);
-            smsErrors.push({ phone, error: err.message });
+            return { phone, success: false, error: err.message };
           }
-        }
+        });
+
+        const results = await Promise.all(sendPromises);
+        results.forEach((result) => {
+          if (!result.success) {
+            smsErrors.push({ phone: result.phone, error: result.error });
+          }
+        });
       } else {
         console.warn('[SOS] No valid recipient phone numbers found for SOS alert.');
       }
@@ -172,14 +180,22 @@ exports.checkIn = async (req, res) => {
         if (recipients.size > 0) {
           const locationLink = `https://maps.google.com/?q=${lat},${lng}`;
           const text = `✅ ${user.name} is safe. Location: ${locationLink}. Message: ${message || 'I am safe.'}`;
-          for (const phone of recipients) {
+          const sendPromises = [...recipients].map(async (phone) => {
             try {
               await sendSMS(phone, text);
+              return { phone, success: true };
             } catch (err) {
               console.error(`Check-in SMS failed for ${phone}:`, err.message);
-              smsErrors.push({ phone, error: err.message });
+              return { phone, success: false, error: err.message };
             }
-          }
+          });
+
+          const results = await Promise.all(sendPromises);
+          results.forEach((result) => {
+            if (!result.success) {
+              smsErrors.push({ phone: result.phone, error: result.error });
+            }
+          });
         }
         // Optionally email contacts
         if (user.emergencyContacts && user.emergencyContacts.length) {

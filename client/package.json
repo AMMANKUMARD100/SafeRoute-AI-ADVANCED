@@ -10,11 +10,17 @@
     "caniuse-lite": "^1.0.30001772",
     "chart.js": "^4.4.1",
     "framer-motion": "^10.18.0",
+    "meyda": "^5.6.3",
     "react": "^18.2.0",
     "react-chartjs-2": "^5.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.21.3",
     "web-vitals": "^2.1.4"
+  },
+  "optionalDependencies": {
+    "leaflet": "^1.9.4",
+    "react-leaflet": "^4.2.1",
+    "leaflet.heat": "^0.2.0"
   },
   "devDependencies": {
     "@babel/plugin-proposal-private-property-in-object": "^7.21.11",

@@ -46,7 +46,7 @@ We combine **predictive AI**, **real‑time voice stress detection** (Hindi/Tami
 - Tailwind CSS
 - Framer Motion
 - Chart.js
-- @react-google-maps/api
+- react-leaflet (Leaflet for maps)
 
 ### Backend
 - Node.js
@@ -61,7 +61,9 @@ We combine **predictive AI**, **real‑time voice stress detection** (Hindi/Tami
 - TensorFlow (optional – voice stress model)
 
 ### External Services
-- Google Maps API
+- OpenRouteService (Routing)
+- Geoapify (Geocoding / Places)
+- OpenWeather (Weather)
 - Twilio (SMS)
 - SendGrid (Email)
 - Firebase Auth (optional)

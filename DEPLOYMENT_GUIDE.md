@@ -65,7 +65,9 @@ NODE_ENV=development
 MONGODB_URI=mongodb://localhost:27017/saferoute
 JWT_SECRET=your_very_secure_secret_key_here
 JWT_EXPIRE=30d
-GOOGLE_MAPS_API_KEY=your_google_maps_api_key
+ORS_API_KEY=your_openrouteservice_api_key
+OPENWEATHER_API_KEY=your_openweather_api_key
+GEOAPIFY_API_KEY=your_geoapify_api_key
 TWILIO_SID=your_twilio_sid
 TWILIO_AUTH_TOKEN=your_twilio_auth_token
 TWILIO_PHONE=+1234567890
@@ -79,7 +81,9 @@ CLIENT_URL=http://localhost:3000
 ### Client (.env)
 ```
 REACT_APP_API_URL=http://localhost:5000/api
-REACT_APP_GOOGLE_MAPS_API_KEY=your_google_maps_api_key
+REACT_APP_GEOAPIFY_API_KEY=your_geoapify_api_key
+REACT_APP_ORS_API_KEY=your_openrouteservice_api_key
+REACT_APP_OPENWEATHER_API_KEY=your_openweather_api_key
 ```
 
 ## API Services & Ports
@@ -115,12 +119,10 @@ sudo systemctl start mongod
 
 ## Third-Party Services Setup
 
-### Google Maps API
-1. Go to https://cloud.google.com/
-2. Create a new project
-3. Enable Maps JavaScript API
-4. Create API key
-5. Add to GOOGLE_MAPS_API_KEY
+### OpenRouteService / Geoapify / OpenWeather
+1. OpenRouteService (routing): https://openrouteservice.org/ — sign up and add `ORS_API_KEY` to server/.env
+2. Geoapify (geocoding/places): https://www.geoapify.com/ — sign up and add `GEOAPIFY_API_KEY` to server/.env and `REACT_APP_GEOAPIFY_API_KEY` to client/.env
+3. OpenWeather (weather): https://openweathermap.org/ — sign up and add `OPENWEATHER_API_KEY` to server/.env and `REACT_APP_OPENWEATHER_API_KEY` to client/.env
 
 ### Twilio (SMS)
 1. Sign up at https://www.twilio.com/

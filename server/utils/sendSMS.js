@@ -24,6 +24,11 @@ const sendSMS = async (to, body) => {
     return { success: true, sid: message.sid };
   } catch (error) {
     console.error(`[SMS] Failed to ${to}:`, error.code || error.message, error.moreInfo || '');
+    if (error.code === 20003) {
+      throw new Error(
+        `SMS sending failed: ${error.message}. Twilio authentication failed. Check TWILIO_SID and TWILIO_AUTH_TOKEN in server/.env, and verify the Twilio account is active.`
+      );
+    }
     throw new Error(`SMS sending failed: ${error.message}`);
   }
 };

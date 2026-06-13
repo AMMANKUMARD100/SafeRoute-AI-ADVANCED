@@ -8,52 +8,62 @@ exports.planRoute = async (req, res) => {
   try {
     const { source, destination, mode = 'safest' } = req.body;
     const userId = req.user.id;
-
-    // 1. Fetch routes from Google Maps
-    const googleResponse = await axios.get(
-      'https://maps.googleapis.com/maps/api/directions/json',
-      {
-        params: {
-          origin: `${source.lat},${source.lng}`,
-          destination: `${destination.lat},${destination.lng}`,
-          alternatives: true,
-          key: config.googleMapsApiKey,
-        },
-      }
-    );
-
-    if (!googleResponse.data.routes || googleResponse.data.routes.length === 0) {
-      return res.status(404).json({ message: 'No routes found' });
+    // 1. Fetch routes from OpenRouteService if configured, otherwise fallback to Google
+    let routes = [];
+    if (config.orsApiKey) {
+      const profile = 'driving-car';
+      const orsUrl = `https://api.openrouteservice.org/v2/directions/${profile}/geojson`;
+      const body = { coordinates: [[source.lng, source.lat], [destination.lng, destination.lat]] };
+      const orsRes = await axios.post(orsUrl, body, { headers: { Authorization: config.orsApiKey, 'Content-Type': 'application/json' } });
+      const features = orsRes.data.features || [];
+      if (!features.length) return res.status(404).json({ message: 'No routes found' });
+      routes = features.map((f) => {
+        const coords = (f.geometry && f.geometry.coordinates) || [];
+        const path = coords.map((c) => ({ lat: c[1], lng: c[0] }));
+        const summary = (f.properties && f.properties.summary) || {};
+        return {
+          polyline: path,
+          duration: summary.duration || 0,
+          distance: summary.distance || 0,
+          startLocation: path[0],
+          endLocation: path[path.length - 1],
+        };
+      });
+    } else {
+      return res.status(500).json({ message: 'Routing requires OpenRouteService. Set ORS_API_KEY in .env' });
     }
-
-    // 2. For each route, get safety score from AI service
-    const routes = googleResponse.data.routes.map((route) => ({
-      polyline: route.overview_polyline.points,
-      duration: route.legs[0].duration.value,
-      distance: route.legs[0].distance.value,
-      startLocation: {
-        lat: route.legs[0].start_location.lat,
-        lng: route.legs[0].start_location.lng,
-      },
-      endLocation: {
-        lat: route.legs[0].end_location.lat,
-        lng: route.legs[0].end_location.lng,
-      },
-    }));
 
     // Call AI scoring service (fallback to mock if not available)
     let scoredRoutes;
     try {
-      const aiResponse = await axios.post(`${config.aiRouteScorerUrl}/score-routes`, {
+      // Call the AI microservice compare endpoint which accepts multiple routes
+      const aiResponse = await axios.post(`${config.aiRouteScorerUrl}/compare-routes`, {
         routes,
         departureTime: new Date().toISOString(),
       });
-      scoredRoutes = aiResponse.data.routes;
+
+      // Normalize response: the AI service may return items as { route, score }
+      const aiRoutes = aiResponse.data.routes || [];
+      scoredRoutes = aiRoutes.map((r) => {
+        // If AI returned { route, score }
+        if (r && r.route && typeof r.score !== 'undefined') {
+          return {
+            ...(r.route || {}),
+            safetyScore: r.score,
+            crimeScore: r.crime_score || r.crimeScore,
+            lightingScore: r.lighting_score || r.lightingScore,
+            crowdScore: r.crowd_score || r.crowdScore,
+            emergencyAccess: r.emergency_access || r.emergencyAccess,
+          };
+        }
+
+        // If AI already returned routes with safetyScore
+        return r;
+      });
     } catch (aiError) {
       // Fallback mock scoring
       scoredRoutes = routes.map((r, i) => ({
         ...r,
-        type: i === 0 ? 'safest' : i === 1 ? 'fastest' : 'balanced',
         safetyScore: i === 0 ? 88 : i === 1 ? 72 : 80,
         crimeScore: 20 + i * 5,
         lightingScore: 75 - i * 3,
@@ -62,7 +72,7 @@ exports.planRoute = async (req, res) => {
       }));
     }
 
-    // 3. Sort by mode
+    // 3. Sort by mode and assign types based on sorted order
     if (mode === 'safest') {
       scoredRoutes.sort((a, b) => b.safetyScore - a.safetyScore);
     } else if (mode === 'fastest') {
@@ -74,6 +84,12 @@ exports.planRoute = async (req, res) => {
           (a.safetyScore * 0.7 + (1 / a.duration) * 0.3)
       );
     }
+
+    // Assign types based on sorted position: first is primary mode, second is fastest, third is balanced
+    scoredRoutes = scoredRoutes.map((route, idx) => ({
+      ...route,
+      type: idx === 0 ? mode : idx === 1 ? (mode === 'fastest' ? 'safest' : 'fastest') : 'balanced',
+    }));
 
     // 4. Save trip to DB
     const selected = scoredRoutes[0];

@@ -1,7 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import axios from 'axios';
-
-const API = axios.create({ baseURL: process.env.REACT_APP_API_URL });
+import API from '../services/api';
 
 const AuthContext = createContext(null);
 
@@ -38,6 +36,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('token', data.token);
     API.defaults.headers.common['Authorization'] = `Bearer ${data.token}`;
     setUser(data.user);
+    return data;
   };
 
   const register = async (name, email, password, phone) => {

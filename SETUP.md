@@ -112,12 +112,16 @@ mongod
 
 ### 2. API Keys & Credentials
 
-#### Google Maps
-1. Visit: https://console.cloud.google.com/
-2. Create new project
-3. Enable: Maps JavaScript API, Geocoding API
-4. Create API key
-5. Add to `GOOGLE_MAPS_API_KEY`
+#### Map & Routing APIs (OpenRouteService, Geoapify, OpenWeather)
+1. OpenRouteService (Routing): https://openrouteservice.org/
+   - Create an account and generate an API key
+   - Add to `ORS_API_KEY` in server/.env
+2. Geoapify (Geocoding / Places): https://www.geoapify.com/
+   - Create an account and generate an API key
+   - Add to `GEOAPIFY_API_KEY` and `REACT_APP_GEOAPIFY_API_KEY` for the client
+3. OpenWeather (Weather / Heat Index): https://openweathermap.org/
+   - Create an account and generate an API key
+   - Add to `OPENWEATHER_API_KEY` and `REACT_APP_OPENWEATHER_API_KEY` for the client
 
 #### Twilio (SMS Notifications)
 1. Sign up: https://www.twilio.com/
