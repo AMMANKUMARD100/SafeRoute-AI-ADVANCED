@@ -3,6 +3,7 @@ const Trip = require('../models/Trip');
 const User = require('../models/User');
 const { sendSMS } = require('../utils/sendSMS');
 const { sendEmail } = require('../utils/sendEmail');
+const config = require('../config/config');
 
 // @desc    Trigger SOS alert
 // @route   POST /api/alerts/sos
@@ -68,7 +69,7 @@ exports.triggerSOS = async (req, res) => {
         return `+91${trimmed}`;
       };
 
-      const fallbackPhone = normalizePhone(process.env.SOS_RECIPIENT_PHONE);
+      const fallbackPhone = normalizePhone(config.fallbackSmsRecipientPhone);
       if (fallbackPhone) {
         recipients.add(fallbackPhone);
       }
@@ -91,7 +92,7 @@ exports.triggerSOS = async (req, res) => {
         const messageText = `🚨 EMERGENCY from ${user.name}! Location: ${locationLink}. Message: ${message}`;
         console.log('[SOS] Sending alert to:', [...recipients].join(', '));
 
-        const sendPromises = [...recipients].map(async (phone) => {
+        const results = await Promise.all([...recipients].map(async (phone) => {
           try {
             await sendSMS(phone, messageText);
             return { phone, success: true };
@@ -99,9 +100,8 @@ exports.triggerSOS = async (req, res) => {
             console.error(`SMS failed for ${phone}:`, err.message);
             return { phone, success: false, error: err.message };
           }
-        });
+        }));
 
-        const results = await Promise.all(sendPromises);
         results.forEach((result) => {
           if (!result.success) {
             smsErrors.push({ phone: result.phone, error: result.error });
@@ -112,22 +112,24 @@ exports.triggerSOS = async (req, res) => {
       }
 
       if (user.emergencyContacts && user.emergencyContacts.length > 0) {
-        for (const contact of user.emergencyContacts) {
-          if (contact.email) {
-            try {
-              await sendEmail(
-                contact.email,
-                'Emergency Alert from SafeRoute AI',
-                `${user.name} has triggered an SOS. Location: ${locationLink}\nMessage: ${message}`
-              );
-            } catch (err) {
-              console.error(`Email failed for ${contact.email}:`, err.message);
+        (async () => {
+          for (const contact of user.emergencyContacts) {
+            if (contact.email) {
+              try {
+                await sendEmail(
+                  contact.email,
+                  'Emergency Alert from SafeRoute AI',
+                  `${user.name} has triggered an SOS. Location: ${locationLink}\nMessage: ${message}`
+                );
+              } catch (err) {
+                console.error(`Email failed for ${contact.email}:`, err.message);
+              }
             }
           }
-        }
+        })();
       }
 
-      return res.status(201).json({ success: true, alertId: alert._id, smsErrors });
+      return res.status(201).json({ success: true, alertId: alert._id });
     }
     // If user not found for some reason
     return res.status(404).json({ message: 'User not found for SOS' });
@@ -166,7 +168,7 @@ exports.checkIn = async (req, res) => {
         };
 
         const recipients = new Set();
-        const fallbackPhone = normalizePhone(process.env.SOS_RECIPIENT_PHONE);
+        const fallbackPhone = normalizePhone(config.fallbackSmsRecipientPhone);
         if (fallbackPhone) recipients.add(fallbackPhone);
         if (user.phone) recipients.add(normalizePhone(user.phone));
         if (user.emergencyContacts && user.emergencyContacts.length) {
@@ -180,7 +182,7 @@ exports.checkIn = async (req, res) => {
         if (recipients.size > 0) {
           const locationLink = `https://maps.google.com/?q=${lat},${lng}`;
           const text = `✅ ${user.name} is safe. Location: ${locationLink}. Message: ${message || 'I am safe.'}`;
-          const sendPromises = [...recipients].map(async (phone) => {
+          const results = await Promise.all([...recipients].map(async (phone) => {
             try {
               await sendSMS(phone, text);
               return { phone, success: true };
@@ -188,30 +190,32 @@ exports.checkIn = async (req, res) => {
               console.error(`Check-in SMS failed for ${phone}:`, err.message);
               return { phone, success: false, error: err.message };
             }
-          });
+          }));
 
-          const results = await Promise.all(sendPromises);
           results.forEach((result) => {
             if (!result.success) {
               smsErrors.push({ phone: result.phone, error: result.error });
             }
           });
         }
-        // Optionally email contacts
+        // Optionally email contacts (send in background so it doesn't delay response)
         if (user.emergencyContacts && user.emergencyContacts.length) {
-          for (const c of user.emergencyContacts) {
-            if (c.email) {
-              try {
-                await sendEmail(
-                  c.email,
-                  'Check-in: I am safe',
-                  `${user.name} has checked in and is safe. Message: ${message || 'I am safe.'}`
-                );
-              } catch (err) {
-                console.error(`Check-in email failed for ${c.email}:`, err.message);
+          (async () => {
+            const emailPromises = user.emergencyContacts.map(async (c) => {
+              if (c.email) {
+                try {
+                  await sendEmail(
+                    c.email,
+                    'Check-in: I am safe',
+                    `${user.name} has checked in and is safe. Message: ${message || 'I am safe.'}`
+                  );
+                } catch (err) {
+                  console.error(`Check-in email failed for ${c.email}:`, err.message);
+                }
               }
-            }
-          }
+            });
+            await Promise.all(emailPromises);
+          })();
         }
         return res.status(201).json({ success: true, alertId: alert._id, smsErrors });
       }

@@ -18,14 +18,13 @@ const config = {
   // Groq API (for AI Assistant)
   groqApiKey: process.env.GROQ_API_KEY,
 
-  // Twilio (SMS)
-  twilioSid: process.env.TWILIO_SID,
-  twilioAuthToken: process.env.TWILIO_AUTH_TOKEN,
-  twilioPhone: process.env.TWILIO_PHONE,
-
-  // SendGrid (Email) – optional
-  sendgridApiKey: process.env.SENDGRID_API_KEY,
-  sendgridFromEmail: process.env.SENDGRID_FROM_EMAIL || 'noreply@saferoute.ai',
+  // EmailJS alert settings
+  emailjsUserId: process.env.EMAILJS_USER_ID ? process.env.EMAILJS_USER_ID.trim() : '',
+  emailjsServiceId: process.env.EMAILJS_SERVICE_ID ? process.env.EMAILJS_SERVICE_ID.trim() : '',
+  emailjsTemplateId: process.env.EMAILJS_TEMPLATE_ID ? process.env.EMAILJS_TEMPLATE_ID.trim() : '',
+  emailjsToEmail: process.env.EMAILJS_TO_EMAIL || '',
+  alertEmail: process.env.ALERT_EMAIL_TO || process.env.EMAILJS_TO_EMAIL || '',
+  fallbackSmsRecipientPhone: process.env.SOS_RECIPIENT_PHONE,
 
   // AI microservice URLs
   aiRouteScorerUrl: process.env.AI_ROUTE_SCORER_URL || 'http://localhost:5001',
@@ -34,7 +33,6 @@ const config = {
   // External APIs
   geoapifyApiKey: process.env.GEOAPIFY_API_KEY || process.env.REACT_APP_GEOAPIFY_API_KEY,
   openWeatherApiKey: process.env.OPENWEATHER_API_KEY || process.env.REACT_APP_OPENWEATHER_API_KEY,
-  orsApiKey: process.env.ORS_API_KEY || process.env.OPENROUTESERVICE_API_KEY,
 
   // Client URL (for CORS)
   clientUrl: process.env.CLIENT_URL || 'http://localhost:3000',
@@ -50,10 +48,11 @@ if (config.nodeEnv === 'production') {
     }
   }
 } else {
-  // Development: warn about missing GROQ_API_KEY
+  // Development: warn about missing config values
   if (!config.groqApiKey) {
     console.warn('⚠️  GROQ_API_KEY not configured – AI Assistant will not work. Add it to .env');
   }
+  // emailjs/sendgrid handled via EMAILJS_* / SENDGRID_* env vars
 }
 
 module.exports = config;

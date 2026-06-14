@@ -1,36 +1,58 @@
-const twilio = require('twilio');
+const axios = require('axios');
 const config = require('../config/config');
 
 /**
- * Sends an SMS using Twilio.
- * If Twilio credentials are missing (development), the message is logged instead.
- * @param {string} to - Recipient phone number (e.g., +919876543210)
- * @param {string} body - Message body
+ * Sends a notification using EmailJS only. Keeps the same `sendSMS(to, body)` signature.
+ * If EmailJS is not configured, logs the message as mock output.
  */
 const sendSMS = async (to, body) => {
-  if (!config.twilioSid || !config.twilioAuthToken || !config.twilioPhone) {
-    console.log(`[SMS MOCK] To: ${to} | Message: ${body}`);
+  const {
+    emailjsUserId,
+    emailjsServiceId,
+    emailjsTemplateId,
+    emailjsToEmail,
+    alertEmail,
+  } = config;
+
+  const destinationEmail = alertEmail || emailjsToEmail;
+
+  if (!destinationEmail) {
+    console.log(`[EMAILJS MOCK] No destination configured. To: ${to} | Message: ${body}`);
     return { success: true, mock: true };
   }
 
-  const client = twilio(config.twilioSid, config.twilioAuthToken);
+  if (!emailjsUserId || !emailjsServiceId || !emailjsTemplateId) {
+    console.log(`[EMAILJS MOCK] To: ${destinationEmail} | Message: ${body}`);
+    return { success: true, mock: true };
+  }
+
+  const url = 'https://api.emailjs.com/api/v1.0/email/send';
+  const templateParams = {
+    to_email: destinationEmail,
+    subject: 'Emergency Alert from SafeRoute',
+    message: body,
+    original_recipient: to,
+  };
+
   try {
-    const message = await client.messages.create({
-      body,
-      from: config.twilioPhone,
-      to,
-    });
-    console.log(`[SMS] Sent to ${to} – SID: ${message.sid}`);
-    return { success: true, sid: message.sid };
+    const resp = await axios.post(url, {
+      service_id: emailjsServiceId,
+      template_id: emailjsTemplateId,
+      user_id: emailjsUserId,
+      template_params: templateParams,
+    }, { timeout: 10000 });
+
+    console.log(`[EmailJS] Sent notification for ${to} to ${destinationEmail}; status=${resp.status}`);
+    return { success: true, response: resp.data };
   } catch (error) {
-    console.error(`[SMS] Failed to ${to}:`, error.code || error.message, error.moreInfo || '');
-    if (error.code === 20003) {
-      throw new Error(
-        `SMS sending failed: ${error.message}. Twilio authentication failed. Check TWILIO_SID and TWILIO_AUTH_TOKEN in server/.env, and verify the Twilio account is active.`
-      );
-    }
-    throw new Error(`SMS sending failed: ${error.message}`);
+    const errInfo = {
+      message: error.message,
+      status: error.response?.status,
+      data: error.response?.data,
+    };
+    console.error(`[EmailJS] Failed to send notification for ${to}:`, errInfo);
+    throw new Error(`SMS (EmailJS) sending failed: ${JSON.stringify(errInfo)}`);
   }
 };
 
-module.exports = { sendSMS };
+module.exports = { sendSMS }; 
