@@ -1,9 +1,8 @@
-import { Circle, useMap, MapContainer, TileLayer } from 'react-leaflet';
+import { MapContainer, TileLayer } from 'react-leaflet';
 import { motion } from 'framer-motion';
-import { useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import LeafletHeatmap from '../maps/LeafletHeatmap';
 
-const containerStyle = { width: '100%', height: '220px', borderRadius: '16px' };
 const center = { lat: 19.076, lng: 72.8777 };
 
 const rawHeatmapPoints = [
@@ -13,27 +12,6 @@ const rawHeatmapPoints = [
   { lat: 19.085, lng: 72.885 },
   { lat: 19.09, lng: 72.87 },
 ];
-
-// Simple component that renders small circles as heat indicators.
-// For denser heatmaps install and use leaflet.heat plugin.
-const HeatCircles = ({ points }) => {
-  return (
-    <>
-      {points.map((p, i) => (
-        <Circle
-          key={`${p.lat}-${p.lng}-${i}`}
-          center={[p.lat, p.lng]}
-          radius={300}
-          pathOptions={{
-            color: 'rgba(255,99,132,0.8)',
-            fillColor: 'rgba(255,99,132,0.35)',
-            weight: 1,
-          }}
-        />
-      ))}
-    </>
-  );
-};
 
 const LiveHeatmapMini = () => {
   const heatmapData = useMemo(() => rawHeatmapPoints, []);

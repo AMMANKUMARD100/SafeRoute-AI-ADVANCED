@@ -1,20 +1,26 @@
 import axios from 'axios';
 
-const GEOAPIFY_KEY = process.env.REACT_APP_GEOAPIFY_API_KEY || '';
+const GEOAPIFY_KEY = process.env.REACT_APP_GEOAPIFY_API_KEY || process.env.GEOAPIFY_API_KEY || '';
 const ORS_KEY = process.env.REACT_APP_ORS_API_KEY || '';
 const OWM_KEY = process.env.REACT_APP_OPENWEATHER_API_KEY || '';
 
 export const geocodePlace = async (placeText) => {
   if (!GEOAPIFY_KEY) throw new Error('Geoapify API key not configured (REACT_APP_GEOAPIFY_API_KEY)');
   const url = 'https://api.geoapify.com/v1/geocode/search';
-  const res = await axios.get(url, { params: { text: placeText, apiKey: GEOAPIFY_KEY, format: 'json' } });
-  const feature = res.data.features?.[0] || res.data.results?.[0];
-  if (!feature) throw new Error('No location found for: ' + placeText);
-  return {
-    lat: feature.lat ?? feature.properties?.lat,
-    lng: feature.lon ?? feature.properties?.lon,
-    raw: feature,
-  };
+
+  try {
+    const res = await axios.get(url, { params: { text: placeText, apiKey: GEOAPIFY_KEY, format: 'json' } });
+    const feature = res.data.features?.[0] || res.data.results?.[0];
+    if (!feature) throw new Error('No location found for: ' + placeText);
+    return {
+      lat: feature.lat ?? feature.properties?.lat,
+      lng: feature.lon ?? feature.properties?.lon,
+      raw: feature,
+    };
+  } catch (err) {
+    const apiError = err.response?.data?.error?.message || err.response?.data?.message || err.response?.data || err.message;
+    throw new Error(`Geoapify geocoding failed: ${apiError}`);
+  }
 };
 
 export const planRouteORS = async (source, destination, profile = 'driving-car') => {

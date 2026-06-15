@@ -4,8 +4,8 @@ import mapService from '../../services/mapService';
 
 const SearchBox = ({ onPlaceSelected, placeholder = 'Enter location...', className = '' }) => {
   const inputRef = useRef(null);
-  const autocompleteRef = useRef(null);
   const [loadError, setLoadError] = useState(false);
+  const [loadErrorMessage, setLoadErrorMessage] = useState('');
 
   useEffect(() => {
     // Replace Google Autocomplete with Geoapify geocoding on blur/enter
@@ -33,6 +33,8 @@ const SearchBox = ({ onPlaceSelected, placeholder = 'Enter location...', classNa
       } catch (err) {
         console.error('[SearchBox] Geocoding failed', err);
         setLoadError(true);
+        setLoadErrorMessage(err.message || 'Geocoding failed. Check your Geoapify API key and billing settings.');
+        setLoadErrorMessage(err.message || 'Geocoding failed. Check your Geoapify API key and billing settings.');
       }
     };
 
@@ -57,7 +59,7 @@ const SearchBox = ({ onPlaceSelected, placeholder = 'Enter location...', classNa
       />
       {loadError && (
         <p className="mt-2 text-xs text-red-300">
-          Geocoding failed. Check your Geoapify API key and billing settings.
+          {loadErrorMessage || 'Geocoding failed. Check your Geoapify API key and billing settings.'}
         </p>
       )}
     </div>

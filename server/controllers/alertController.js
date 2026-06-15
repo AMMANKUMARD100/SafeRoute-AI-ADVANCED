@@ -5,6 +5,15 @@ const { sendSMS } = require('../utils/sendSMS');
 const { sendEmail } = require('../utils/sendEmail');
 const config = require('../config/config');
 
+const normalizePhone = (phone) => {
+  if (!phone) return null;
+  const trimmed = phone.trim();
+  if (trimmed.startsWith('+')) return trimmed;
+  if (trimmed.startsWith('0')) return `+91${trimmed.slice(1)}`;
+  if (/^91[6-9]\d{9}$/.test(trimmed)) return `+${trimmed}`;
+  return `+91${trimmed}`;
+};
+
 // @desc    Trigger SOS alert
 // @route   POST /api/alerts/sos
 exports.triggerSOS = async (req, res) => {
@@ -60,15 +69,6 @@ exports.triggerSOS = async (req, res) => {
       const locationLink = `https://maps.google.com/?q=${lat},${lng}`;
       const recipients = new Set();
 
-      const normalizePhone = (phone) => {
-        if (!phone) return null;
-        const trimmed = phone.trim();
-        if (trimmed.startsWith('+')) return trimmed;
-        if (trimmed.startsWith('0')) return `+91${trimmed.slice(1)}`;
-        if (/^91[6-9]\d{9}$/.test(trimmed)) return `+${trimmed}`;
-        return `+91${trimmed}`;
-      };
-
       const fallbackPhone = normalizePhone(config.fallbackSmsRecipientPhone);
       if (fallbackPhone) {
         recipients.add(fallbackPhone);
@@ -86,48 +86,47 @@ exports.triggerSOS = async (req, res) => {
         });
       }
 
-      const smsErrors = [];
+      const messageText = `🚨 EMERGENCY from ${user.name}! Location: ${locationLink}. Message: ${message}`;
+      console.log('[SOS] Scheduling alert delivery to:', [...recipients].join(', '));
 
-      if (recipients.size > 0) {
-        const messageText = `🚨 EMERGENCY from ${user.name}! Location: ${locationLink}. Message: ${message}`;
-        console.log('[SOS] Sending alert to:', [...recipients].join(', '));
-
-        const results = await Promise.all([...recipients].map(async (phone) => {
-          try {
-            await sendSMS(phone, messageText);
-            return { phone, success: true };
-          } catch (err) {
-            console.error(`SMS failed for ${phone}:`, err.message);
-            return { phone, success: false, error: err.message };
-          }
-        }));
-
-        results.forEach((result) => {
-          if (!result.success) {
-            smsErrors.push({ phone: result.phone, error: result.error });
-          }
-        });
-      } else {
-        console.warn('[SOS] No valid recipient phone numbers found for SOS alert.');
-      }
-
-      if (user.emergencyContacts && user.emergencyContacts.length > 0) {
-        (async () => {
-          for (const contact of user.emergencyContacts) {
-            if (contact.email) {
-              try {
-                await sendEmail(
-                  contact.email,
-                  'Emergency Alert from SafeRoute AI',
-                  `${user.name} has triggered an SOS. Location: ${locationLink}\nMessage: ${message}`
-                );
-              } catch (err) {
-                console.error(`Email failed for ${contact.email}:`, err.message);
-              }
+      (async () => {
+        if (recipients.size > 0) {
+          const results = await Promise.all([...recipients].map(async (phone) => {
+            try {
+              await sendSMS(phone, messageText);
+              return { phone, success: true };
+            } catch (err) {
+              console.error(`SMS failed for ${phone}:`, err.message);
+              return { phone, success: false, error: err.message };
             }
-          }
-        })();
-      }
+          }));
+
+          results.forEach((result) => {
+            if (!result.success) {
+              console.error('[SOS] SMS delivery failed:', result);
+            }
+          });
+        } else {
+          console.warn('[SOS] No valid recipient phone numbers found for SOS alert.');
+        }
+
+        if (user.emergencyContacts && user.emergencyContacts.length > 0) {
+          await Promise.all(user.emergencyContacts.map(async (contact) => {
+            if (!contact.email) return;
+            try {
+              await sendEmail(
+                contact.email,
+                'Emergency Alert from SafeRoute AI',
+                `${user.name} has triggered an SOS. Location: ${locationLink}\nMessage: ${message}`
+              );
+            } catch (err) {
+              console.error(`Email failed for ${contact.email}:`, err.message);
+            }
+          }));
+        }
+      })().catch((err) => {
+        console.error('[SOS] Background notification failed:', err);
+      });
 
       return res.status(201).json({ success: true, alertId: alert._id });
     }
@@ -158,15 +157,6 @@ exports.checkIn = async (req, res) => {
     try {
       const user = await User.findById(userId);
       if (user) {
-        const normalizePhone = (phone) => {
-          if (!phone) return null;
-          const trimmed = phone.trim();
-          if (trimmed.startsWith('+')) return trimmed;
-          if (trimmed.startsWith('0')) return `+91${trimmed.slice(1)}`;
-          if (/^91[6-9]\d{9}$/.test(trimmed)) return `+${trimmed}`;
-          return `+91${trimmed}`;
-        };
-
         const recipients = new Set();
         const fallbackPhone = normalizePhone(config.fallbackSmsRecipientPhone);
         if (fallbackPhone) recipients.add(fallbackPhone);
@@ -178,46 +168,47 @@ exports.checkIn = async (req, res) => {
           });
         }
 
-        const smsErrors = [];
-        if (recipients.size > 0) {
-          const locationLink = `https://maps.google.com/?q=${lat},${lng}`;
-          const text = `✅ ${user.name} is safe. Location: ${locationLink}. Message: ${message || 'I am safe.'}`;
-          const results = await Promise.all([...recipients].map(async (phone) => {
-            try {
-              await sendSMS(phone, text);
-              return { phone, success: true };
-            } catch (err) {
-              console.error(`Check-in SMS failed for ${phone}:`, err.message);
-              return { phone, success: false, error: err.message };
-            }
-          }));
+        const locationLink = `https://maps.google.com/?q=${lat},${lng}`;
+        const text = `✅ ${user.name} is safe. Location: ${locationLink}. Message: ${message || 'I am safe.'}`;
 
-          results.forEach((result) => {
-            if (!result.success) {
-              smsErrors.push({ phone: result.phone, error: result.error });
-            }
-          });
-        }
-        // Optionally email contacts (send in background so it doesn't delay response)
-        if (user.emergencyContacts && user.emergencyContacts.length) {
-          (async () => {
-            const emailPromises = user.emergencyContacts.map(async (c) => {
-              if (c.email) {
-                try {
-                  await sendEmail(
-                    c.email,
-                    'Check-in: I am safe',
-                    `${user.name} has checked in and is safe. Message: ${message || 'I am safe.'}`
-                  );
-                } catch (err) {
-                  console.error(`Check-in email failed for ${c.email}:`, err.message);
-                }
+        (async () => {
+          if (recipients.size > 0) {
+            const results = await Promise.all([...recipients].map(async (phone) => {
+              try {
+                await sendSMS(phone, text);
+                return { phone, success: true };
+              } catch (err) {
+                console.error(`Check-in SMS failed for ${phone}:`, err.message);
+                return { phone, success: false, error: err.message };
+              }
+            }));
+
+            results.forEach((result) => {
+              if (!result.success) {
+                console.error('[CheckIn] SMS delivery failed:', result);
               }
             });
-            await Promise.all(emailPromises);
-          })();
-        }
-        return res.status(201).json({ success: true, alertId: alert._id, smsErrors });
+          }
+
+          if (user.emergencyContacts && user.emergencyContacts.length) {
+            await Promise.all(user.emergencyContacts.map(async (c) => {
+              if (!c.email) return;
+              try {
+                await sendEmail(
+                  c.email,
+                  'Check-in: I am safe',
+                  `${user.name} has checked in and is safe. Message: ${message || 'I am safe.'}`
+                );
+              } catch (err) {
+                console.error(`Check-in email failed for ${c.email}:`, err.message);
+              }
+            }));
+          }
+        })().catch((err) => {
+          console.error('[CheckIn] Background notification failed:', err);
+        });
+
+        return res.status(201).json({ success: true, alertId: alert._id });
       }
     } catch (err) {
       console.error('[CheckIn] notify contacts failed:', err);
